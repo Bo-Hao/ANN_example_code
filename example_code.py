@@ -1,3 +1,4 @@
+# Description: This is an example code. It is used to demonstrate how to use the code to train and test the model. Data are generated using the generate_data() function.
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers, regularizers
@@ -5,33 +6,36 @@ import numpy as np
 
 # define fake data generator
 def generate_data(): 
-    species_list = [i for i in range(110)] # total 110 species
-    all_data = []
+    species_list = [i for i in range(110)] # suppose there are total 110 species
+    plot_data = []
+
+    # suppose the plot is 25 x 25 = 625 cells.
     for x_axis in range(25):
         for y_axis in range(25):
-            x = x_axis
-            y = y_axis
+            x = x_axis  # location 
+            y = y_axis  # location 
 
-            individual_number = np.random.randint(20, 110) # generate random number of individuals 
-            individual_in_cell = np.random.choice(species_list, individual_number, replace= True) # generate random species
-            true_species_in_cell = len(list(set(individual_in_cell))) # remove duplicate species
+            individual_number = np.random.randint(40, 110) # generate random number of individuals. The individual number of a cell. 
+            individual_in_cell = np.random.choice(species_list, individual_number, replace= True) # generate random species. Assign the species to each individual. 
+            true_species_in_cell = len(list(set(individual_in_cell))) # the number of spsecies of a cell.
 
-            rapid_scan_individual = np.random.choice(individual_in_cell, individual_number, replace= True) # subsampling the cell
-            rapid_scan_species = len(list(set(rapid_scan_individual))) # remove duplicate species
+            rapid_scan_individual = np.random.choice(individual_in_cell, individual_number, replace= True) # subsampling the cell. Simulate the rapid scan. 
+            rapid_scan_species = len(list(set(rapid_scan_individual))) # the number of species of a cell-level rapid scan.
 
-            all_data.append([x, y, rapid_scan_species, true_species_in_cell])
+            plot_data.append([x, y, rapid_scan_species, true_species_in_cell]) # add the data to the plot_data list.
 
     # sample cell for training 
-    all_data_idx = [i for i in range(len(all_data))]
-    sampled_idxs = np.random.choice(all_data_idx, 63, replace= False) # sample size is about 10% of total cells
-    # separate the all_data to 10% traing dataset and 90% testing dataset
+    plot_data_idx = [i for i in range(len(plot_data))] # the index of plot_data 
+    sampled_idxs = np.random.choice(plot_data_idx, 63, replace= False) # choose the the samples for census. Sample size is about 10% of total cells (625*0.1 = 62.5)
+
+    # separate the plot_data to 10% traing dataset and 90% testing dataset
     training_data = []
     testing_data = []
-    for i in range(len(all_data)):
+    for i in range(len(plot_data)):
         if i in sampled_idxs:
-            training_data.append(all_data[i])
+            training_data.append(plot_data[i])
         else:
-            testing_data.append(all_data[i])
+            testing_data.append(plot_data[i])
     return training_data, testing_data
 
 def separate_x_y(data):
@@ -49,7 +53,7 @@ def separate_x_y(data):
 def mish(x):
     return x * tf.math.tanh(tf.math.softplus(x))
 
-# dealing data.
+# initializing data.
 train_data, test_data = generate_data()
 x, y = separate_x_y(train_data)
 
@@ -108,7 +112,7 @@ model = keras.Sequential([
 # define lose function 
 loss_fn = tf.keras.losses.Huber()
 
-# define optimizer, using Adam
+# define optimizer, using Adam optimizer
 optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=0.01, 
                                      beta_1=0.9, 
                                      beta_2=0.999, 
@@ -125,6 +129,8 @@ history = model.fit(x_normalized, y_normalized, epochs=epochs)
 # testing data
 new_x, new_y = separate_x_y(test_data)
 new_x_normalized = []
+
+# normalize the data using the mean and std of training data.
 for i in range(len(new_x)):
     new_x_normalized.append((new_x[i] - x_means) / x_stds)
 input_data = np.array(new_x_normalized, dtype=np.float32)
@@ -132,7 +138,7 @@ input_data = np.array(new_x_normalized, dtype=np.float32)
 # make prediction using trained model 
 predicted_value = model.predict(input_data)
 
-# invert the normalized data to original data domain.
+# invert the normalized data to original data domain using the mean and std of training data.
 invert_y = predicted_value * y_std + y_mean
 
 # summary the result
